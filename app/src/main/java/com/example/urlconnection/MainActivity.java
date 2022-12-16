@@ -25,7 +25,6 @@ import java.net.HttpURLConnection;
 import java.net.URL;
 
 public class MainActivity extends AppCompatActivity {
-    private Button statusButton;
     private EditText urlText;
     private TextView textView;
     private Button downloadButton;
@@ -38,26 +37,17 @@ public class MainActivity extends AppCompatActivity {
         setContentView(R.layout.activity_main);
         urlText = (EditText) findViewById(R.id.linkET);
         textView = (TextView) findViewById(R.id.textTV);
-        statusButton = (Button)findViewById(R.id.statusB);
         downloadButton = (Button)findViewById(R.id.downloadB);
-
-        statusButton.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                // Check for Internet Connection
-                if (isConnected()) {
-                    Toast.makeText(getApplicationContext(), "Internet Connected", Toast.LENGTH_SHORT).show();
-                } else {
-                    Toast.makeText(getApplicationContext(), "No Internet Connection", Toast.LENGTH_SHORT).show();
-                }
-            }
-        });
 
         downloadButton.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                DownloadWebpageText dwt = new DownloadWebpageText();
-                dwt.execute(urlText.getText().toString());
+                if (isConnected()) {
+                    DownloadWebpageText dwt = new DownloadWebpageText();
+                    dwt.execute(urlText.getText().toString());
+                } else {
+                    Toast.makeText(getApplicationContext(), "No Internet Connection", Toast.LENGTH_SHORT).show();
+                }
             }
         });
     }
@@ -83,23 +73,43 @@ public class MainActivity extends AppCompatActivity {
         @Override
         protected String doInBackground(String... urls) {
 
-            // params comes from the execute() call: params[0] is the url.
             try {
                 return downloadUrl(urls[0]);
             } catch (IOException e) {
                 return "Unable to retrieve web page. URL may be invalid.";
             }
         }
-        // onPostExecute displays the results of the AsyncTask.
+
         @Override
         protected void onPostExecute(String result) {
-            textView.setText(result);
+            String text ="";
+            boolean finish = false;
+            boolean found = false;
+            int i=0;
+            while (!found) {
+                if (result.charAt(i)=='<' && result.charAt(i+1)=='p' && result.charAt(i+2)=='>'){
+                    found = true;
+                }else {
+                    i++;
+                }
+            }
+            i+=3;
+            while (!finish) {
+                if (result.charAt(i)=='<' && result.charAt(i+1)=='/' && result.charAt(i+2)=='p' && result.charAt(i+3)=='>'){
+                    finish=true;
+                }else {
+                    text += result.charAt(i);
+                    i++;
+                }
+            }
+
+            textView.setText(text);
         }
 
 
         private String downloadUrl(String myurl) throws IOException {
             InputStream is = null;
-            int len = 80000;
+            int len = 500000;
 
             try {
                 URL url = new URL(myurl);
@@ -112,10 +122,8 @@ public class MainActivity extends AppCompatActivity {
 
                 conn.connect();
                 int response = conn.getResponseCode();
-                System.out.println("The response is: " + response);
                 is = conn.getInputStream();
 
-                // Convert the InputStream into a string
                 String contentAsString = readIt(is, len);
                 return contentAsString;
 
